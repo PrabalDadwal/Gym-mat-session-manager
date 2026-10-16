@@ -1,0 +1,207 @@
+<div class="space-y-6">
+
+  {% if flash_notice %}
+  <div class="border-sharp-2 p-3 bg-black text-white font-mono-numbers text-xs uppercase flex items-center justify-between">
+    <span>SYSTEM ACTION: {{ flash_notice }}</span>
+    <span class="text-[#FF3B00]">REAL-TIME SYNCED</span>
+  </div>
+  {% endif %}
+
+  <!-- Top Metrics Bar -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono-numbers">
+    <div class="bg-white border-sharp p-3">
+      <div class="text-[10px] text-neutral-500 uppercase">MAT CAPACITY</div>
+      <div class="font-display font-black text-2xl text-black">
+        {{ summary.confirmed_count }} <span class="text-xs text-neutral-400 font-normal">/ 20</span>
+      </div>
+    </div>
+    <div class="bg-white border-sharp p-3">
+      <div class="text-[10px] text-neutral-500 uppercase">CHECKED IN</div>
+      <div class="font-display font-black text-2xl text-[#008744]">
+        {{ summary.checked_in_count }}
+      </div>
+    </div>
+    <div class="bg-white border-sharp p-3">
+      <div class="text-[10px] text-neutral-500 uppercase">PENDING ARRIVAL</div>
+      <div class="font-display font-black text-2xl text-black">
+        {{ summary.confirmed_count - summary.checked_in_count }}
+      </div>
+    </div>
+    <div class="bg-white border-sharp p-3">
+      <div class="text-[10px] text-neutral-500 uppercase">WAITLIST QUEUE</div>
+      <div class="font-display font-black text-2xl {% if summary.waitlist_count > 0 %}text-[#FF3B00]{% else %}text-neutral-400{% endif %}">
+        {{ summary.waitlist_count }}
+      </div>
+    </div>
+  </div>
+
+  <!-- 20-Mat Status Strip (Floor Visual) -->
+  <div class="bg-white border-sharp-2 p-4 shadow-hard">
+    <div class="flex items-center justify-between pb-2 mb-3 border-sharp-b font-mono-numbers text-xs">
+      <span class="font-bold uppercase tracking-wider text-black">FLOOR STATUS (MATS 01 - 20)</span>
+      <div class="flex items-center gap-2 text-[10px]">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-[#008744] inline-block"></span> CHECKED IN</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-black inline-block"></span> CONFIRMED</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-neutral-200 inline-block"></span> OPEN</span>
+      </div>
+    </div>
+    <div class="grid grid-cols-5 sm:grid-cols-10 gap-1.5 font-mono-numbers text-center">
+      {% for m in range(1, 21) %}
+        {% set b = summary.mat_map.get(m) %}
+        <div class="p-1.5 border {% if b and b.status == 'CHECKED_IN' %}bg-[#008744] text-white border-black font-bold{% elif b %}bg-black text-white border-black{% else %}bg-neutral-100 text-neutral-400 border-neutral-300{% endif %}">
+          <div class="text-[11px] font-bold">#{{ "%02d"|format(m) }}</div>
+          <div class="text-[9px] truncate">
+            {% if b and b.status == 'CHECKED_IN' %}IN{% elif b %}RES{% else %}--{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Confirmed Members Roster Table -->
+  <div class="bg-white border-sharp-2 shadow-hard overflow-hidden">
+    <div class="p-4 border-sharp-b bg-neutral-50 flex items-center justify-between">
+      <div class="font-display font-bold text-base uppercase tracking-tight text-black flex items-center gap-2">
+        <span>SESSION ROSTER // CONFIRMED MEMBERS</span>
+        <span class="font-mono-numbers text-xs px-2 py-0.5 bg-black text-white">
+          {{ summary.confirmed_count }} / 20
+        </span>
+      </div>
+      <div class="font-mono-numbers text-xs text-neutral-500">
+        AUTONOMOUS PROMOTIONS ENABLED
+      </div>
+    </div>
+
+    {% if summary.confirmed_bookings %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left font-mono-numbers text-xs border-collapse">
+        <thead>
+          <tr class="border-sharp-b bg-neutral-100 text-neutral-600 uppercase text-[11px]">
+            <th class="p-3 border-sharp-r w-16">MAT</th>
+            <th class="p-3 border-sharp-r">ATHLETE NAME</th>
+            <th class="p-3 border-sharp-r">CHECK-IN CODE</th>
+            <th class="p-3 border-sharp-r">STATUS</th>
+            <th class="p-3 text-right">ACTION</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-200">
+          {% for b in summary.confirmed_bookings %}
+          <tr class="hover:bg-neutral-50 transition-colors {% if b.status == 'CHECKED_IN' %}bg-emerald-50/40{% endif %}">
+            <td class="p-3 border-sharp-r font-bold text-black text-sm">
+              #{{ "%02d"|format(b.mat_number) }}
+            </td>
+            <td class="p-3 border-sharp-r">
+              <div class="font-bold text-black">{{ b.user_name }}</div>
+              <div class="text-[10px] text-neutral-500">{{ b.user_email }}</div>
+            </td>
+            <td class="p-3 border-sharp-r font-black text-sm tracking-wider text-black">
+              {{ b.check_in_code or '--' }}
+            </td>
+            <td class="p-3 border-sharp-r">
+              {% if b.status == 'CHECKED_IN' %}
+                <span class="px-2 py-0.5 bg-[#008744] text-white font-bold text-[10px] uppercase">
+                  CHECKED IN
+                </span>
+                <div class="text-[10px] text-neutral-500 mt-0.5">
+                  {{ b.checked_in_at.strftime('%H:%M:%S') if b.checked_in_at else '' }}
+                </div>
+              {% else %}
+                <span class="px-2 py-0.5 bg-black text-white font-semibold text-[10px] uppercase">
+                  CONFIRMED
+                </span>
+              {% endif %}
+            </td>
+            <td class="p-3 text-right space-x-2">
+              {% if b.status != 'CHECKED_IN' %}
+                <button 
+                  type="button"
+                  hx-post="/staff/checkin"
+                  hx-vals='{"code": "{{ b.check_in_code }}", "session_id": "{{ summary.session.id }}"}'
+                  hx-target="#checkin-response-target"
+                  class="btn-hard px-2.5 py-1 bg-[#008744] hover:bg-emerald-800 text-white font-bold text-[10px] uppercase tracking-wider cursor-pointer border border-black">
+                  ONE-TAP CHECK IN
+                </button>
+              {% endif %}
+              
+              <button 
+                type="button"
+                hx-post="/staff/cancel-booking"
+                hx-vals='{"booking_id": "{{ b.id }}", "session_id": "{{ summary.session.id }}"}'
+                hx-target="#staff-roster"
+                onclick="return confirm('Release Mat #{{ b.mat_number }} for {{ b.user_name }}? Waitlist #1 will be promoted.')"
+                class="px-2 py-1 bg-white hover:bg-neutral-100 text-neutral-700 hover:text-black font-semibold text-[10px] uppercase cursor-pointer border border-neutral-300">
+                RELEASE
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-8 text-center font-mono-numbers text-xs text-neutral-500">
+      NO ATHLETES CURRENTLY BOOKED FOR THIS SESSION.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Waitlist Queue Table (if any) -->
+  {% if summary.waitlist %}
+  <div class="bg-white border-sharp-2 shadow-hard overflow-hidden">
+    <div class="p-4 border-sharp-b bg-neutral-900 text-white flex items-center justify-between">
+      <div class="font-display font-bold text-base uppercase tracking-tight flex items-center gap-2">
+        <span class="w-2.5 h-2.5 bg-[#FF3B00] rounded-full live-indicator"></span>
+        <span>WAITLIST QUEUE // REAL-TIME PRIORITY</span>
+      </div>
+      <div class="font-mono-numbers text-xs text-[#FF3B00]">
+        AUTO-PROMOTION ENGAGED
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left font-mono-numbers text-xs border-collapse">
+        <thead>
+          <tr class="border-sharp-b bg-neutral-100 text-neutral-600 uppercase text-[11px]">
+            <th class="p-3 border-sharp-r w-24">QUEUE POS</th>
+            <th class="p-3 border-sharp-r">ATHLETE NAME</th>
+            <th class="p-3 border-sharp-r">CONTACT</th>
+            <th class="p-3 border-sharp-r">JOINED AT</th>
+            <th class="p-3 text-right">ACTION</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-200">
+          {% for w in summary.waitlist %}
+          <tr class="hover:bg-neutral-50 transition-colors">
+            <td class="p-3 border-sharp-r">
+              <span class="px-2 py-0.5 bg-[#FF3B00] text-white font-black text-xs">
+                #{{ "%02d"|format(w.waitlist_position) }}
+              </span>
+            </td>
+            <td class="p-3 border-sharp-r font-bold text-black">
+              {{ w.user_name }}
+            </td>
+            <td class="p-3 border-sharp-r text-neutral-500">
+              {{ w.user_email }}
+            </td>
+            <td class="p-3 border-sharp-r text-neutral-500">
+              {{ w.created_at.strftime('%H:%M:%S') if w.created_at else '--' }}
+            </td>
+            <td class="p-3 text-right">
+              <button 
+                type="button"
+                hx-post="/staff/cancel-booking"
+                hx-vals='{"booking_id": "{{ w.id }}", "session_id": "{{ summary.session.id }}"}'
+                hx-target="#staff-roster"
+                onclick="return confirm('Remove {{ w.user_name }} from waitlist?')"
+                class="px-2 py-1 bg-white hover:bg-neutral-100 text-neutral-600 text-[10px] uppercase border border-neutral-300 cursor-pointer">
+                REMOVE
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>

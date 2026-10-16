@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}APEX MAT LAB // DOOR CHECK-IN TERMINAL{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Terminal Station Header -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-sharp-b pb-4">
+    <div>
+      <div class="flex items-center gap-2 font-mono-numbers text-xs text-neutral-500 mb-1">
+        <span class="w-2.5 h-2.5 bg-[#FF3B00] rounded-full live-indicator"></span>
+        <span class="text-black font-bold uppercase">STATION: ENTRY PORTAL 01</span>
+        <span>•</span>
+        <span>HIGH-EFFICIENCY CHECK-IN ENGINE</span>
+      </div>
+      <h1 class="font-display font-extrabold text-3xl md:text-5xl uppercase tracking-tighter text-black">
+        DOOR CHECK-IN TERMINAL
+      </h1>
+      <p class="font-mono-numbers text-xs text-neutral-600 mt-0.5">
+        SCAN BARCODE OR ENTER 8-CHARACTER CODE // CONFIRM FLOOR ENTRY // REAL-TIME SSE SYNC
+      </p>
+    </div>
+
+    <!-- Active Session Selector for Staff -->
+    <div class="bg-white border-sharp p-3 font-mono-numbers text-xs shadow-hard self-start md:self-auto">
+      <div class="text-[10px] text-neutral-500 uppercase font-bold mb-1">SELECT SESSION TO MONITOR:</div>
+      <select onchange="window.location.href='/staff?session_id=' + this.value" 
+              class="bg-[#F4F4F0] border-sharp p-2 text-black font-bold text-xs focus:outline-none cursor-pointer">
+        {% for s in sessions %}
+          <option value="{{ s.id }}" {% if s.id == active_session_id %}selected{% endif %}>
+            {{ s.start_time }} // {{ s.title.split('//')[0] }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- Giant 8-Character Door Check-In Scanner Input -->
+  <div class="bg-black text-white border-sharp-2 p-6 md:p-8 shadow-hard-lg">
+    <div class="max-w-2xl mx-auto space-y-4">
+      <div class="flex items-center justify-between font-mono-numbers text-xs text-neutral-400">
+        <span class="uppercase tracking-widest text-[#FF3B00] font-bold flex items-center gap-2">
+          <span class="w-2 h-2 bg-[#FF3B00]"></span>
+          DOOR CODE ENTRY / SCANNER INPUT
+        </span>
+        <span>AUTO-FORMAT // PRESS ENTER</span>
+      </div>
+
+      <form hx-post="/staff/checkin" 
+            hx-target="#checkin-response-target" 
+            hx-swap="innerHTML"
+            class="space-y-4"
+            onsubmit="setTimeout(() => { document.getElementById('code_input').value=''; document.getElementById('code_input').focus(); }, 100);">
+        <input type="hidden" name="session_id" value="{{ active_session_id }}">
+
+        <div class="relative">
+          <input 
+            type="text" 
+            name="code" 
+            id="code_input" 
+            autofocus 
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="XXXX-XXXX" 
+            maxlength="9"
+            class="w-full bg-neutral-900 border-2 border-neutral-700 p-4 text-center font-mono-numbers font-black text-3xl md:text-5xl text-[#FF3B00] tracking-widest uppercase focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]"
+            oninput="formatCodeInput(this)">
+          
+          <button type="button" 
+                  onclick="document.getElementById('code_input').value=''; document.getElementById('code_input').focus();"
+                  class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white font-mono-numbers text-xs uppercase cursor-pointer">
+            [ CLEAR ]
+          </button>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button type="submit" 
+                  class="btn-hard flex-1 py-4 bg-[#FF3B00] hover:bg-[#E03400] text-white border border-white font-display font-black text-lg uppercase tracking-wider cursor-pointer shadow-hard flex items-center justify-center gap-2">
+            <span>VERIFY & CHECK IN MEMBER</span>
+            <span>→</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Quick-Test Code Launcher (Pulls real codes from confirmed athletes) -->
+      {% if summary.confirmed_bookings %}
+      <div class="pt-3 border-t border-neutral-800">
+        <div class="font-mono-numbers text-[10px] text-neutral-400 uppercase tracking-wider mb-2">
+          QUICK-TEST CODES FROM CURRENT SESSION (CLICK TO AUTO-FILL & VERIFY):
+        </div>
+        <div class="flex flex-wrap gap-2">
+          {% for b in summary.confirmed_bookings[:4] %}
+            {% if b.check_in_code %}
+            <button type="button" 
+                    onclick="testCode('{{ b.check_in_code }}')" 
+                    class="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 font-mono-numbers text-xs text-neutral-200 cursor-pointer flex items-center gap-1.5">
+              <span class="text-[#FF3B00] font-bold">{{ b.check_in_code }}</span>
+              <span class="text-neutral-400">({{ b.user_name.split()[0] }})</span>
+            </button>
+            {% endif %}
+          {% endfor %}
+          <button type="button" 
+                  onclick="testCode('INVALID-99')" 
+                  class="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 font-mono-numbers text-xs text-red-400 cursor-pointer">
+            Test Invalid Code
+          </button>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- Real-Time Check-In Verification Banner Target -->
+  <div id="checkin-response-target">
+    <!-- Populated dynamically via HTMX on scan/submission -->
+  </div>
+
+  <!-- Real-Time Staff Session Roster (Auto-Refreshes on SSE Update) -->
+  <div id="staff-roster" 
+       hx-get="/partials/staff/{{ active_session_id }}"
+       hx-trigger="sse:session_update"
+       hx-swap="innerHTML">
+    {% include "partials/staff_roster.html" %}
+  </div>
+
+</div>
+
+<script>
+  function formatCodeInput(el) {
+    let val = el.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (val.length > 4) {
+      val = val.slice(0, 4) + '-' + val.slice(4, 8);
+    }
+    el.value = val;
+  }
+
+  function testCode(code) {
+    const input = document.getElementById('code_input');
+    if (input) {
+      input.value = code;
+      // Trigger HTMX post
+      input.form.requestSubmit();
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,398 @@
+<div id="session-details" 
+     hx-get="/partials/session/{{ summary.session.id }}" 
+     hx-trigger="sse:session_update" 
+     hx-target="#session-container"
+     hx-swap="innerHTML" 
+     class="space-y-6">
+
+  <!-- Flash Notification Banner -->
+  {% if flash_message %}
+  <div class="border-sharp-2 p-4 {% if flash_success %}bg-[#0D0D0D] text-white border-black{% else %}bg-[#FF3B00] text-white border-[#FF3B00]{% endif %} shadow-hard flex items-center justify-between">
+    <div class="flex items-center gap-3 font-mono-numbers text-sm">
+      <span class="w-2.5 h-2.5 bg-white rounded-full"></span>
+      <span class="font-bold tracking-tight uppercase">{{ flash_message }}</span>
+    </div>
+    <span class="text-xs font-mono-numbers opacity-75">REAL-TIME SYNCED</span>
+  </div>
+  {% endif %}
+
+  <!-- Top Session Spec Header -->
+  <div class="bg-white border-sharp-2 p-5 shadow-hard flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="px-2 py-0.5 bg-[#0D0D0D] text-white font-mono-numbers text-xs font-bold uppercase tracking-wider">
+          SESSION #{{ "%02d"|format(summary.session.id) }}
+        </span>
+        <span class="px-2 py-0.5 border border-black font-mono-numbers text-xs uppercase font-semibold">
+          INTENSITY // {{ summary.session.intensity }}
+        </span>
+        <span class="text-xs font-mono-numbers text-neutral-500 uppercase">
+          COACH: {{ summary.session.coach }}
+        </span>
+      </div>
+      <h2 class="font-display font-extrabold text-2xl md:text-3xl uppercase tracking-tight text-[#0D0D0D]">
+        {{ summary.session.title }}
+      </h2>
+      <div class="font-mono-numbers text-sm text-neutral-600 mt-0.5">
+        TIME WINDOW: <strong class="text-black">{{ summary.session.display_time }}</strong>
+      </div>
+    </div>
+
+    <!-- Stark Big Capacity Metrics -->
+    <div class="flex items-stretch border-sharp bg-[#F4F4F0] divide-x divide-black self-start md:self-auto font-mono-numbers">
+      <div class="px-4 py-2 text-center">
+        <div class="text-[10px] text-neutral-500 uppercase font-semibold tracking-wider">MATS REMAINING</div>
+        <div class="font-display font-black text-2xl md:text-3xl {% if summary.mats_remaining == 0 %}text-[#FF3B00]{% else %}text-black{% endif %}">
+          {{ "%02d"|format(summary.mats_remaining) }}<span class="text-xs font-normal text-neutral-500">/20</span>
+        </div>
+      </div>
+      <div class="px-4 py-2 text-center">
+        <div class="text-[10px] text-neutral-500 uppercase font-semibold tracking-wider">CONFIRMED</div>
+        <div class="font-display font-black text-2xl text-black">
+          {{ "%02d"|format(summary.confirmed_count) }}
+        </div>
+      </div>
+      <div class="px-4 py-2 text-center">
+        <div class="text-[10px] text-neutral-500 uppercase font-semibold tracking-wider">WAITLIST</div>
+        <div class="font-display font-black text-2xl {% if summary.waitlist_count > 0 %}text-[#FF3B00]{% else %}text-neutral-400{% endif %}">
+          {{ "%02d"|format(summary.waitlist_count) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary Operations Grid (Two Column Layout) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Column 1 (7 Cols): Tactical Mat Floor Plan (1 to 20) -->
+    <div class="lg:col-span-7 bg-white border-sharp-2 p-5 shadow-hard flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between pb-3 mb-4 border-sharp-b">
+          <div class="font-display font-bold text-lg uppercase tracking-tight flex items-center gap-2">
+            <span>MAT GRID ROSTER</span>
+            <span class="text-xs font-mono-numbers px-2 py-0.5 bg-neutral-200 text-black">20 MAT INVARIANT</span>
+          </div>
+          <div class="flex items-center gap-3 font-mono-numbers text-[11px]">
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 bg-white border border-black inline-block"></span>
+              <span>OPEN</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 bg-[#0D0D0D] inline-block"></span>
+              <span>BOOKED</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 bg-[#008744] inline-block"></span>
+              <span>CHECKED IN</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 bg-[#FF3B00] inline-block"></span>
+              <span>YOU</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 20-Mat Floor Tiles (4 x 5 Grid) -->
+        <div class="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+          {% for mat_num in range(1, 21) %}
+            {% set booked = summary.mat_map.get(mat_num) %}
+            {% set is_mine = (user_booking and user_booking.mat_number == mat_num and user_booking.status in ['CONFIRMED', 'CHECKED_IN']) %}
+
+            <div class="relative p-2.5 flex flex-col justify-between h-20 border-sharp transition-all
+              {% if is_mine %}
+                bg-[#FF3B00] text-white border-black ring-2 ring-black shadow-hard
+              {% elif booked and booked.status == 'CHECKED_IN' %}
+                bg-[#008744] text-white border-black
+              {% elif booked %}
+                bg-[#0D0D0D] text-white border-black
+              {% else %}
+                bg-neutral-50 text-neutral-800 border-dashed border-neutral-400 hover:border-black hover:bg-white
+              {% endif %}">
+              
+              <div class="flex items-start justify-between font-mono-numbers">
+                <span class="text-xs font-bold tracking-tighter">#{{ "%02d"|format(mat_num) }}</span>
+                {% if is_mine %}
+                  <span class="text-[9px] font-black uppercase tracking-widest bg-black text-white px-1">YOU</span>
+                {% elif booked and booked.status == 'CHECKED_IN' %}
+                  <span class="text-[9px] font-black uppercase tracking-widest bg-black text-white px-1">IN</span>
+                {% elif booked %}
+                  <span class="text-[9px] font-mono-numbers opacity-80 uppercase">RES</span>
+                {% else %}
+                  <span class="text-[9px] font-mono-numbers text-neutral-400 uppercase">FREE</span>
+                {% endif %}
+              </div>
+
+              <div class="text-[11px] truncate font-medium font-mono-numbers mt-1">
+                {% if is_mine %}
+                  <span class="font-bold underline decoration-white">{{ user_booking.user_name }}</span>
+                {% elif booked %}
+                  <span class="opacity-90">{{ booked.user_name.split()[0] }}</span>
+                {% else %}
+                  <span class="text-neutral-400 font-normal">--</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Floor Plan Footer Stats -->
+      <div class="mt-5 pt-4 border-sharp-t border-t border-neutral-300 flex items-center justify-between text-xs font-mono-numbers text-neutral-600">
+        <div>
+          FLOOR OCCUPANCY: <strong class="text-black">{{ summary.confirmed_count }} / 20</strong> ({{ ((summary.confirmed_count / 20) * 100)|int }}%)
+        </div>
+        <div>
+          CHECKED IN: <strong class="text-[#008744]">{{ summary.checked_in_count }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2 (5 Cols): Dynamic Member Action Card / High-Contrast Pass -->
+    <div class="lg:col-span-5 flex flex-col gap-6">
+
+      {% if user_booking and user_booking.status in ['CONFIRMED', 'CHECKED_IN'] %}
+        <!-- STATE A: ATHLETE CONFIRMED PASS (Physical Ticket Style) -->
+        <div class="relative bg-white border-sharp-2 p-6 shadow-hard-lg overflow-hidden">
+          <div class="ticket-notch-left"></div>
+          <div class="ticket-notch-right"></div>
+
+          <!-- Pass Top Header -->
+          <div class="flex items-center justify-between border-sharp-b pb-3 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 bg-[#FF3B00]"></span>
+              <span class="font-display font-black text-sm tracking-wider uppercase text-black">OFFICIAL APEX ENTRY PASS</span>
+            </div>
+            <span class="font-mono-numbers text-xs px-2 py-0.5 {% if user_booking.status in ['CHECKED_IN', 'BookingStatus.CHECKED_IN'] %}bg-[#008744] text-white{% else %}bg-black text-white{% endif %} font-bold uppercase">
+              {% if 'CHECKED_IN' in user_booking.status|string %}CHECKED IN{% else %}CONFIRMED{% endif %}
+            </span>
+          </div>
+
+          <!-- Mat Big Display -->
+          <div class="bg-[#F4F4F0] border-sharp p-4 mb-4 flex items-center justify-between">
+            <div>
+              <div class="font-mono-numbers text-xs text-neutral-500 uppercase">RESERVED MAT ALLOCATION</div>
+              <div class="font-display font-black text-4xl text-black">
+                MAT // {{ "%02d"|format(user_booking.mat_number) }}
+              </div>
+            </div>
+            <div class="text-right font-mono-numbers text-xs">
+              <div class="text-neutral-500">MEMBER</div>
+              <div class="font-bold text-black uppercase">{{ user_booking.user_name }}</div>
+            </div>
+          </div>
+
+          <!-- 8-Character Door Check-In Code -->
+          <div class="border-sharp-2 bg-black text-white p-4 text-center mb-4">
+            <div class="font-mono-numbers text-[10px] text-neutral-400 uppercase tracking-widest mb-1">
+              8-CHARACTER DOOR CHECK-IN CODE
+            </div>
+            <div class="font-mono-numbers font-black text-3xl tracking-widest text-[#FF3B00] select-all py-1">
+              {{ user_booking.check_in_code }}
+            </div>
+            <div class="text-[10px] font-mono-numbers text-neutral-400 mt-1">
+              ENTER AT DOOR TERMINAL OR SHOW TO APEX STAFF
+            </div>
+          </div>
+
+          <!-- Barcode Graphic Strip -->
+          <div class="mb-4">
+            <div class="barcode-strip border border-black mb-1"></div>
+            <div class="font-mono-numbers text-[9px] text-center text-neutral-500 tracking-widest uppercase">
+              APX*SESSION-{{ summary.session.id }}*{{ user_booking.check_in_code }}*MAT-{{ user_booking.mat_number }}
+            </div>
+          </div>
+
+          <!-- Cancellation Button -->
+          <form hx-post="/cancel" 
+                hx-target="#session-container" 
+                hx-swap="innerHTML" 
+                class="pt-2">
+            <input type="hidden" name="booking_id" value="{{ user_booking.id }}">
+            <input type="hidden" name="session_id" value="{{ summary.session.id }}">
+            <button type="submit" 
+                    onclick="return confirm('Confirm cancellation? Waitlist position #1 will be promoted instantly.')"
+                    class="btn-hard w-full py-3 bg-white hover:bg-neutral-100 text-black border-sharp-2 font-display font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-hard">
+              <span>✕ CANCEL RESERVATION</span>
+            </button>
+            <p class="text-[10px] font-mono-numbers text-neutral-500 mt-2 text-center">
+              AUTOMATIC PROMOTION: Cancelling immediately promotes Waitlist #1 to this mat.
+            </p>
+          </form>
+        </div>
+
+      {% elif user_booking and user_booking.status == 'WAITLIST' %}
+        <!-- STATE B: ATHLETE WAITLIST TICKER (Real-Time Queue Position) -->
+        <div class="bg-black text-white border-sharp-2 p-6 shadow-hard-lg">
+          <div class="flex items-center justify-between pb-3 border-b border-neutral-800 mb-4 font-mono-numbers text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 bg-[#FF3B00] rounded-full live-indicator"></span>
+              <span class="text-[#FF3B00] font-bold uppercase tracking-widest">LIVE QUEUE TICKER</span>
+            </div>
+            <span class="text-neutral-400">SSE SYNCED</span>
+          </div>
+
+          <div class="text-center py-4 bg-neutral-900 border border-neutral-800 mb-4">
+            <div class="font-mono-numbers text-xs text-neutral-400 uppercase tracking-wider mb-1">
+              CURRENT WAITLIST STANDING
+            </div>
+            <div class="font-display font-black text-5xl md:text-6xl text-[#FF3B00] tracking-tight">
+              #{{ "%02d"|format(user_booking.waitlist_position) }}
+            </div>
+            <div class="font-mono-numbers text-xs text-neutral-300 mt-2 uppercase font-semibold">
+              YOU ARE POSITION #{{ user_booking.waitlist_position }} IN QUEUE
+            </div>
+          </div>
+
+          <div class="space-y-2 font-mono-numbers text-xs text-neutral-300 mb-5 border-l-2 border-[#FF3B00] pl-3 py-1">
+            <p>• Zero page refresh required. This screen updates live via Server-Sent Events.</p>
+            <p>• If an athlete cancels their reservation, your position advances automatically.</p>
+            <p>• Position #1 is automatically promoted to CONFIRMED with an 8-character check-in code.</p>
+          </div>
+
+          <!-- Leave Waitlist Button -->
+          <form hx-post="/cancel" 
+                hx-target="#session-container" 
+                hx-swap="innerHTML">
+            <input type="hidden" name="booking_id" value="{{ user_booking.id }}">
+            <input type="hidden" name="session_id" value="{{ summary.session.id }}">
+            <button type="submit" 
+                    onclick="return confirm('Leave the waitlist for this session?')"
+                    class="btn-hard w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-600 font-display font-bold text-sm uppercase tracking-wider cursor-pointer shadow-hard">
+              LEAVE WAITLIST
+            </button>
+          </form>
+        </div>
+
+      {% else %}
+        <!-- STATE C: UNBOOKED (RESERVE MAT OR JOIN WAITLIST) -->
+        <div class="bg-white border-sharp-2 p-6 shadow-hard flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-sharp-b pb-3 mb-4">
+              <span class="font-display font-bold text-base uppercase tracking-tight text-black">
+                {% if summary.is_full %}
+                  JOIN SESSION WAITLIST
+                {% else %}
+                  RESERVE YOUR MAT
+                {% endif %}
+              </span>
+              <span class="font-mono-numbers text-xs px-2 py-0.5 {% if summary.is_full %}bg-[#FF3B00] text-white{% else %}bg-black text-white{% endif %} font-bold uppercase">
+                {% if summary.is_full %}CAPACITY FULL (20/20){% else %}{{ summary.mats_remaining }} OPEN MATS{% endif %}
+              </span>
+            </div>
+
+            <!-- Single-Click Booking Form -->
+            <form hx-post="/book" 
+                  hx-target="#session-container" 
+                  hx-swap="innerHTML" 
+                  class="space-y-4">
+              <input type="hidden" name="session_id" value="{{ summary.session.id }}">
+
+              <!-- Athlete Identity Input -->
+              <div>
+                <label class="block font-mono-numbers text-xs text-neutral-600 uppercase font-bold mb-1">
+                  ATHLETE NAME
+                </label>
+                <input type="text" 
+                       name="user_name" 
+                       id="user_name_input"
+                       value="{{ user_name }}" 
+                       required 
+                       class="w-full bg-[#F4F4F0] border-sharp p-2.5 font-mono-numbers text-sm text-black focus:outline-none focus:ring-2 focus:ring-black">
+              </div>
+
+              <div>
+                <label class="block font-mono-numbers text-xs text-neutral-600 uppercase font-bold mb-1">
+                  MEMBER EMAIL (FOR CONFIRMATION)
+                </label>
+                <input type="email" 
+                       name="user_email" 
+                       id="user_email_input"
+                       value="{{ user_email }}" 
+                       required 
+                       class="w-full bg-[#F4F4F0] border-sharp p-2.5 font-mono-numbers text-sm text-black focus:outline-none focus:ring-2 focus:ring-black">
+              </div>
+
+              <!-- Quick Athlete Presets (for fast tactile testing) -->
+              <div class="pt-1">
+                <div class="font-mono-numbers text-[10px] text-neutral-500 uppercase mb-1.5">QUICK PRESET TEST ATHLETES:</div>
+                <div class="flex flex-wrap gap-1.5 font-mono-numbers text-xs">
+                  <button type="button" 
+                          onclick="document.getElementById('user_name_input').value='Alex Rivera'; document.getElementById('user_email_input').value='alex.rivera@athletic.io';" 
+                          class="px-2 py-1 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 cursor-pointer">
+                    Alex Rivera
+                  </button>
+                  <button type="button" 
+                          onclick="document.getElementById('user_name_input').value='Jordan Taylor'; document.getElementById('user_email_input').value='jordan.t@sub4.run';" 
+                          class="px-2 py-1 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 cursor-pointer">
+                    Jordan Taylor
+                  </button>
+                  <button type="button" 
+                          onclick="document.getElementById('user_name_input').value='Morgan Cross'; document.getElementById('user_email_input').value='morgan@apexmat.org';" 
+                          class="px-2 py-1 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 cursor-pointer">
+                    Morgan Cross
+                  </button>
+                </div>
+              </div>
+
+              <!-- Primary Submit Button -->
+              <div class="pt-3">
+                {% if summary.is_full %}
+                  <button type="submit" 
+                          class="btn-hard w-full py-4 bg-[#FF3B00] hover:bg-[#E03400] text-white border-sharp-2 font-display font-black text-lg uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-hard">
+                    <span>JOIN WAITLIST // POSITION #{{ summary.waitlist_count + 1 }}</span>
+                    <span>→</span>
+                  </button>
+                  <p class="text-[10px] font-mono-numbers text-neutral-500 mt-2 text-center">
+                    SESSION FULL (20/20). Instant automatic promotion to confirmed mat if any athlete cancels.
+                  </p>
+                {% else %}
+                  <button type="submit" 
+                          class="btn-hard w-full py-4 bg-[#0D0D0D] hover:bg-black text-white border-sharp-2 font-display font-black text-lg uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-hard">
+                    <span>RESERVE MAT // SINGLE-CLICK</span>
+                    <span>→</span>
+                  </button>
+                  <p class="text-[10px] font-mono-numbers text-neutral-500 mt-2 text-center">
+                    Instant 8-character check-in code and assigned mat number generated on submission.
+                  </p>
+                {% endif %}
+              </div>
+            </form>
+          </div>
+
+          <!-- Bottom Notice -->
+          <div class="mt-6 pt-4 border-sharp-t border-t border-neutral-300 font-mono-numbers text-[11px] text-neutral-500">
+            SYSTEM INVARIANT: Hard limit of 20 mats strictly enforced by database locks.
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Waitlist Queue Display Panel (if athletes waiting) -->
+      {% if summary.waitlist_count > 0 %}
+      <div class="bg-white border-sharp-2 p-4 shadow-hard">
+        <div class="flex items-center justify-between border-sharp-b pb-2 mb-3 font-mono-numbers text-xs">
+          <span class="font-bold uppercase tracking-wider text-black">ACTIVE WAITLIST QUEUE ({{ summary.waitlist_count }})</span>
+          <span class="text-[#FF3B00] font-semibold">PRIORITY ORDER</span>
+        </div>
+        <div class="space-y-1.5 font-mono-numbers text-xs">
+          {% for w in summary.waitlist %}
+            <div class="flex items-center justify-between p-2 {% if user_booking and user_booking.id == w.id %}bg-black text-white font-bold{% else %}bg-neutral-100 text-neutral-800 border border-neutral-200{% endif %}">
+              <div class="flex items-center gap-2">
+                <span class="w-5 h-5 bg-[#FF3B00] text-white flex items-center justify-center font-bold text-[10px]">
+                  #{{ w.waitlist_position }}
+                </span>
+                <span>{{ w.user_name }}</span>
+              </div>
+              <span class="text-[10px] opacity-75">
+                {% if user_booking and user_booking.id == w.id %}YOU{% else %}QUEUED{% endif %}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</div>

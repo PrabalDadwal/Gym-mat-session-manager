@@ -1,0 +1,63 @@
+<!-- Check-In Result Banner & Audio Chime -->
+<div id="checkin-banner" class="border-sharp-2 p-5 shadow-hard {% if success %}bg-[#008744] text-white border-black{% else %}bg-[#FF3B00] text-white border-black{% endif %} transition-all">
+  <div class="flex items-start justify-between gap-4">
+    <div class="space-y-1">
+      <div class="font-mono-numbers text-xs uppercase tracking-widest flex items-center gap-2">
+        <span class="w-2.5 h-2.5 bg-white rounded-full"></span>
+        <span>{% if success %}TERMINAL STATUS: ACCESS GRANTED{% else %}TERMINAL STATUS: VERIFICATION FAILED{% endif %}</span>
+      </div>
+      <div class="font-display font-black text-2xl md:text-3xl uppercase tracking-tight">
+        {{ message }}
+      </div>
+      {% if booking %}
+      <div class="font-mono-numbers text-xs text-neutral-100 flex flex-wrap gap-4 pt-1">
+        <span>MAT: <strong class="text-white text-sm">#{{ "%02d"|format(booking.mat_number) }}</strong></span>
+        <span>MEMBER: <strong class="text-white">{{ booking.user_name }}</strong></span>
+        <span>CODE: <strong class="text-white">{{ booking.check_in_code }}</strong></span>
+      </div>
+      {% endif %}
+    </div>
+
+    <button type="button" 
+            onclick="document.getElementById('checkin-banner').remove()" 
+            class="text-white font-mono-numbers text-sm px-2 py-1 bg-black hover:bg-neutral-800 cursor-pointer">
+      [ CLEAR ]
+    </button>
+  </div>
+</div>
+
+<!-- Web Audio API Tactile Chime -->
+<script>
+  (function playDoorTone() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      {% if success %}
+        // High-pitched double beep (success)
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+        osc.frequency.setValueAtTime(1174.66, audioCtx.currentTime + 0.08); // D6
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+      {% else %}
+        // Low double buzz (error)
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      {% endif %}
+    } catch(e) {}
+  })();
+</script>
+
+<!-- Out of Band Swap for Staff Roster so it refreshes immediately with updated check-in status! -->
+<div id="staff-roster" hx-swap-oob="true">
+  {% include "partials/staff_roster.html" %}
+</div>

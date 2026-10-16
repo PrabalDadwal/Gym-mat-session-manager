@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}APEX MAT LAB // HOURLY MAT BOOKING PROTOCOL{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Operational Header with Station Status -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-sharp-b pb-4">
+    <div>
+      <div class="flex items-center gap-2 font-mono-numbers text-xs text-neutral-500 mb-1">
+        <span class="w-2 h-2 rounded-full bg-[#008744]"></span>
+        <span>TODAY'S SCHEDULE: {{ sessions[0].session_date if sessions else 'LIVE' }}</span>
+        <span>•</span>
+        <span>HOURLY ROTATION 06:00 — 21:00</span>
+      </div>
+      <h1 class="font-display font-extrabold text-3xl md:text-5xl uppercase tracking-tighter text-black">
+        HOURLY MAT PROTOCOL
+      </h1>
+      <p class="font-mono-numbers text-xs md:text-sm text-neutral-600 mt-1">
+        HIGH-PRECISION GYM MAT BOOKING // STRICT 20-MAT CAP // INSTANT 8-CHAR DOOR CODES
+      </p>
+    </div>
+
+    <!-- Active Athlete Profile Switcher -->
+    <div class="bg-white border-sharp p-3 font-mono-numbers text-xs shadow-hard self-start md:self-auto">
+      <div class="text-[10px] text-neutral-500 uppercase">ACTIVE ATHLETE PROFILE</div>
+      <div class="font-bold text-black flex items-center gap-2 mt-0.5">
+        <span class="w-2 h-2 bg-[#FF3B00] rounded-full"></span>
+        <span id="current-user-display">{{ user_name }}</span>
+        <span class="text-neutral-400 font-normal">({{ user_id }})</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hourly Session Selector (Horizontal Timeline Bar) -->
+  <div>
+    <div class="flex items-center justify-between mb-2 font-mono-numbers text-xs text-neutral-500">
+      <span class="font-bold uppercase tracking-wider text-black">SELECT HOURLY SESSION</span>
+      <span>SCROLL FOR FULL SCHEDULE (06:00 - 21:00) →</span>
+    </div>
+
+    <!-- Scrollable Session Blocks -->
+    <div class="overflow-x-auto pb-2 scrollbar-thin">
+      <div class="flex items-stretch gap-2 min-w-max">
+        {% for s in sessions %}
+          {% set is_active = (s.id == active_session_id) %}
+          <button 
+            type="button"
+            id="tab-session-{{ s.id }}"
+            hx-get="/partials/session/{{ s.id }}"
+            hx-target="#session-container"
+            hx-swap="innerHTML"
+            onclick="updateActiveTab({{ s.id }})"
+            class="session-tab text-left p-3 border-sharp-2 transition-all cursor-pointer flex flex-col justify-between w-36 h-22
+                   {% if is_active %}bg-black text-white border-black shadow-hard{% else %}bg-white text-black border-neutral-300 hover:border-black{% endif %}">
+            
+            <div class="flex items-center justify-between font-mono-numbers text-[11px] mb-1">
+              <span class="font-bold">{{ s.start_time }}</span>
+              <span class="text-[9px] uppercase px-1 py-0.2
+                           {% if is_active %}bg-[#FF3B00] text-white{% else %}bg-neutral-200 text-neutral-700{% endif %}">
+                60 MIN
+              </span>
+            </div>
+
+            <div class="font-display font-bold text-xs uppercase tracking-tight truncate">
+              {{ s.title.split('//')[0] }}
+            </div>
+
+            <div class="font-mono-numbers text-[10px] mt-1 pt-1 border-t {% if is_active %}border-neutral-700 text-neutral-300{% else %}border-neutral-200 text-neutral-500{% endif %} flex justify-between">
+              <span>{{ s.coach.split()[0] }}</span>
+              <span class="font-bold">20 MATS</span>
+            </div>
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic Session Details Container (Refreshed via HTMX and SSE) -->
+  <div id="session-container">
+    {% include "partials/session_details.html" %}
+  </div>
+
+</div>
+
+<script>
+  let currentActiveSessionId = {{ active_session_id }};
+
+  function updateActiveTab(sessionId) {
+    currentActiveSessionId = sessionId;
+    
+    // Update container hx-get so background SSE refreshes target the currently selected session!
+    const container = document.getElementById('session-container');
+    if (container) {
+      container.setAttribute('hx-get', '/partials/session/' + sessionId);
+    }
+
+    // Toggle styling on tabs
+    document.querySelectorAll('.session-tab').forEach(tab => {
+      tab.classList.remove('bg-black', 'text-white', 'border-black', 'shadow-hard');
+      tab.classList.add('bg-white', 'text-black', 'border-neutral-300');
+    });
+    const activeTab = document.getElementById('tab-session-' + sessionId);
+    if (activeTab) {
+      activeTab.classList.remove('bg-white', 'text-black', 'border-neutral-300');
+      activeTab.classList.add('bg-black', 'text-white', 'border-black', 'shadow-hard');
+    }
+  }
+
+  // HTMX After Swap Event: Re-trigger dynamic checks if needed
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    // If the swap was on session-details or session-container, ensure correct tab is active
+    if (evt.detail.target.id === 'session-container' || evt.detail.target.id === 'session-details') {
+      // Clean up
+    }
+  });
+</script>
+{% endblock %}

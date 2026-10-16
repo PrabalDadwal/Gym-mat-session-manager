@@ -1,0 +1,7 @@
+[
+  "app/tests/test_booking.py::test_booking_under_capacity_allocates_mat_and_code",
+  "app/tests/test_booking.py::test_cancellation_auto_promotes_waitlist_1_and_shifts_queue",
+  "app/tests/test_booking.py::test_concurrent_bookings_preserves_invariant",
+  "app/tests/test_booking.py::test_door_check_in_terminal",
+  "app/tests/test_booking.py::test_hard_invariant_never_21_and_waitlist_order"
+]

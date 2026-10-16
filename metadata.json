@@ -1,0 +1,6 @@
+{
+  "name": "Apex Mat Lab",
+  "description": "High-precision hourly gym mat reservation and real-time door check-in terminal with zero-refresh queue management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
