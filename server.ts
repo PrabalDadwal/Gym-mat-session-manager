@@ -159,18 +159,8 @@ function loadFromDisk(): boolean {
   return false;
 }
 
-// Seed initial data
-function seedInitialData() {
-  if (loadFromDisk()) {
-    console.log(`[APEX MAT LAB] Loaded ${BOOKINGS.length} bookings & ${USERS.length} users.`);
-    // Ensure main admin exists
-    ensureMainAdmin();
-    return;
-  }
-
-  // Pre-seed Main Admin: prabaldadwal2008@gmail.com
-  ensureMainAdmin();
-
+// Helper to seed mock bookings
+function seedMockBookings() {
   // Session 3 (08:00 AM) -> EXACTLY 20/20 FULL + 3 WAITLIST
   const s3 = SESSIONS[2];
   for (let m = 1; m <= 20; m++) {
@@ -255,7 +245,22 @@ function seedInitialData() {
       }
     }
   });
+}
 
+// Seed initial data
+function seedInitialData() {
+  if (loadFromDisk()) {
+    console.log(`[APEX MAT LAB] Loaded ${BOOKINGS.length} bookings & ${USERS.length} users.`);
+    // Ensure main admin exists
+    ensureMainAdmin();
+    return;
+  }
+
+  // Pre-seed Main Admin: prabaldadwal2008@gmail.com
+  ensureMainAdmin();
+
+  // If initial load and empty, populate mock schedule
+  seedMockBookings();
   saveToDisk();
 }
 
@@ -606,6 +611,50 @@ async function startServer() {
     return res.json({
       success: true,
       message: `User ${user.name} updated to Role: ${user.role}, Status: ${user.status}.`,
+    });
+  });
+
+  // Clear all bookings across all sessions (Clean production schedule)
+  app.post('/api/admin/clear-all-bookings', (_req: Request, res: Response) => {
+    BOOKINGS = [];
+    nextBookingId = 1;
+    saveToDisk();
+    broadcastAdminEvent('bookings_cleared', { timestamp: new Date().toISOString() });
+    SESSIONS.forEach((s) => broadcastUpdate(s.id, 'cleared'));
+    return res.json({
+      success: true,
+      message: 'All mat bookings cleared successfully. Floor schedule is now completely open for real production use.',
+    });
+  });
+
+  // Purge all demo/dummy data and users, leaving only the Main Admin and real registered users
+  app.post('/api/admin/purge-demo-data', (_req: Request, res: Response) => {
+    BOOKINGS = [];
+    nextBookingId = 1;
+    // Keep only registered users who are not mock athletes/sample seed
+    USERS = USERS.filter((u) => u.email.toLowerCase() === MAIN_ADMIN_EMAIL.toLowerCase() || (!u.id.startsWith('user_seed_') && u.email !== 'marcus.staff@apex.io'));
+    ADMIN_REQUESTS = ADMIN_REQUESTS.filter((r) => r.id !== 'req_marcus_01');
+    ensureMainAdmin();
+    saveToDisk();
+    broadcastAdminEvent('demo_purged', { timestamp: new Date().toISOString() });
+    SESSIONS.forEach((s) => broadcastUpdate(s.id, 'cleared'));
+    return res.json({
+      success: true,
+      message: 'All demo bookings, sample athletes, and mock staff purged. Ready for live production use.',
+    });
+  });
+
+  // Re-seed demo mock data (for testing or demonstration)
+  app.post('/api/admin/seed-demo-data', (_req: Request, res: Response) => {
+    BOOKINGS = [];
+    nextBookingId = 1;
+    seedMockBookings();
+    saveToDisk();
+    broadcastAdminEvent('demo_seeded', { timestamp: new Date().toISOString() });
+    SESSIONS.forEach((s) => broadcastUpdate(s.id, 'seeded'));
+    return res.json({
+      success: true,
+      message: 'Sample demo data and session rosters re-seeded for testing.',
     });
   });
 

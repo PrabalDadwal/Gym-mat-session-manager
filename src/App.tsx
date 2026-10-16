@@ -360,6 +360,61 @@ export default function App() {
     }
   };
 
+  const handleClearAllBookings = async () => {
+    if (!confirm('Clear ALL mat bookings across all 16 sessions? All sessions will reset to 0 bookings and 20 open mats.')) return;
+    try {
+      const res = await fetch('/api/admin/clear-all-bookings', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setFlash({ message: data.message, success: true });
+        fetchSessions();
+        if (activeSessionId) fetchSessionDetail(activeSessionId);
+      } else {
+        setFlash({ message: data.error || 'Failed to clear bookings.', success: false });
+      }
+    } catch (err) {
+      console.error(err);
+      setFlash({ message: 'Network error clearing bookings.', success: false });
+    }
+  };
+
+  const handlePurgeDemoData = async () => {
+    if (!confirm('PURGE ALL DEMO DATA FOR PRODUCTION? This clears dummy bookings and mock athletes. Main Admin (prabaldadwal2008@gmail.com) and real users are preserved.')) return;
+    try {
+      const res = await fetch('/api/admin/purge-demo-data', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setFlash({ message: data.message, success: true });
+        fetchSessions();
+        fetchAdminOverview();
+        if (activeSessionId) fetchSessionDetail(activeSessionId);
+      } else {
+        setFlash({ message: data.error || 'Failed to purge demo data.', success: false });
+      }
+    } catch (err) {
+      console.error(err);
+      setFlash({ message: 'Network error purging demo data.', success: false });
+    }
+  };
+
+  const handleSeedDemoData = async () => {
+    if (!confirm('Re-seed sample mock bookings for testing? This will load test athletes into Session 1 and Session 3.')) return;
+    try {
+      const res = await fetch('/api/admin/seed-demo-data', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setFlash({ message: data.message, success: true });
+        fetchSessions();
+        if (activeSessionId) fetchSessionDetail(activeSessionId);
+      } else {
+        setFlash({ message: data.error || 'Failed to seed demo data.', success: false });
+      }
+    } catch (err) {
+      console.error(err);
+      setFlash({ message: 'Network error seeding demo data.', success: false });
+    }
+  };
+
   // Single-Click Booking Handler
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -924,6 +979,47 @@ export default function App() {
                 {/* TAB 3: CAPACITY & FLOOR REGULATION */}
                 {adminTab === 'sessions' && (
                   <div className="space-y-4">
+                    {/* Production Data Management & Reset Controls */}
+                    <div className="bg-[#0D0D0D] text-white border-sharp-2 p-5 shadow-hard flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 font-mono-numbers text-xs text-[#FF3B00] font-black uppercase">
+                          <span>★ LIVE PRODUCTION CONTROLS</span>
+                          <span>•</span>
+                          <span>SCHEDULE DATA MANAGEMENT</span>
+                        </div>
+                        <div className="font-display font-black text-lg uppercase tracking-tight text-white mt-1">
+                          READY TO LAUNCH FOR REAL ATHLETES?
+                        </div>
+                        <p className="font-mono-numbers text-xs text-neutral-400 max-w-xl mt-1">
+                          Purge dummy sample names and clear test bookings with one click to start with a pristine, 100% empty 20-mat floor. Real registrations and the Main Admin ({MAIN_ADMIN_EMAIL}) remain intact.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 font-mono-numbers text-xs">
+                        <button
+                          type="button"
+                          onClick={handleClearAllBookings}
+                          className="btn-hard px-4 py-2.5 bg-white text-black hover:bg-neutral-200 font-bold uppercase cursor-pointer border border-white"
+                        >
+                          CLEAR ALL BOOKINGS (0/20)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePurgeDemoData}
+                          className="btn-hard px-4 py-2.5 bg-[#FF3B00] hover:bg-[#E03400] text-white font-black uppercase cursor-pointer border border-white shadow-hard"
+                        >
+                          PURGE DEMO DATA (LIVE READY)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSeedDemoData}
+                          className="btn-hard px-3 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold uppercase cursor-pointer border border-neutral-700"
+                        >
+                          RE-SEED DEMO DATA
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="bg-white border-sharp-2 p-4 shadow-hard flex items-center justify-between">
                       <div className="font-display font-black text-lg uppercase tracking-tight text-black">
                         ALL 16 HOURLY SESSIONS // FLOOR REGULATION
